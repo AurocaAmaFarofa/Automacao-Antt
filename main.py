@@ -5,11 +5,12 @@ from playwright.async_api import async_playwright
 
 URL = "https://consultapublica.antt.gov.br/Site/ConsultaRNTRC.aspx"
 
+import os
+from datetime import datetime
+
 
 async def main():
-
     async with async_playwright() as p:
-
         print("Iniciando navegador...")
 
         navegador = await p.chromium.launch(
@@ -18,175 +19,65 @@ async def main():
         )
 
         pagina = await navegador.new_page()
-
         await pagina.goto(URL)
 
-        print("\n===================================")
-        print("PÁGINA CARREGADA")
-        print("===================================\n")
+        print("Página carregada.")
 
-
-        # ==========================================================
-        # 1. SELECIONAR "POR VEÍCULO"
-        # ==========================================================
-
+        # 1. Selecionar "Por Veículo"
         radio_veiculo = pagina.locator("#Corpo_rbTipoConsulta_2")
-
-        print("Elemento encontrado:", await radio_veiculo.count())
-        print("Visível:", await radio_veiculo.is_visible())
-        print("Habilitado:", await radio_veiculo.is_enabled())
-        print("Selecionado antes:", await radio_veiculo.is_checked())
-
-        print("\nTentando selecionar 'Por Veículo'...")
 
         await radio_veiculo.evaluate(
             "element => element.click()"
         )
 
-        print("Clique executado pelo JavaScript.")
+        print("Consulta 'Por Veículo' selecionada.")
 
         await pagina.wait_for_timeout(3000)
 
-        print("Selecionado depois:", await radio_veiculo.is_checked())
-
-
-        # ==========================================================
-        # 2. LOCALIZAR CAMPOS
-        # ==========================================================
-
-        print("\n===================================")
-        print("VERIFICANDO CAMPOS")
-        print("===================================\n")
-
+        # 2. Localizar campos
         placa = pagina.locator("#Corpo_txtPlaca")
         rntrc = pagina.locator("#Corpo_txtRNTRC")
         cpf_cnpj = pagina.locator("#Corpo_txtCpfCnpj")
 
-        print("Placa encontrada:", await placa.count())
-        print("Placa visível:", await placa.is_visible())
-
-        print("RNTRC encontrado:", await rntrc.count())
-        print("RNTRC visível:", await rntrc.is_visible())
-
-        print("CPF/CNPJ encontrado:", await cpf_cnpj.count())
-        print("CPF/CNPJ visível:", await cpf_cnpj.is_visible())
-
-
-        # ==========================================================
-        # 3. PREENCHER CAMPOS
-        # ==========================================================
-
-        print("\n===================================")
-        print("PREENCHENDO CAMPOS")
-        print("===================================\n")
-
+        # 3. Preencher campos
         await placa.fill("MBZ1I49")
         await rntrc.fill("055614433")
 
-        print(
-            "Placa preenchida:",
-            await placa.input_value()
-        )
+        print("Campos preenchidos.")
 
-        print(
-            "RNTRC preenchido:",
-            await rntrc.input_value()
-        )
-
-        print(
-            "CPF/CNPJ preenchido:",
-            await cpf_cnpj.input_value()
-        )
-
-
-        # ==========================================================
-        # 4. LOCALIZAR ALTCHA
-        # ==========================================================
-
-        print("\n===================================")
-        print("LOCALIZANDO ALTCHA")
-        print("===================================\n")
-
+        # 4. Localizar ALTCHA
         altcha = pagina.locator("altcha-widget#altcha")
 
-        print("ALTCHA encontrado:", await altcha.count())
-
         if await altcha.count() == 0:
-
             print("ERRO: ALTCHA não encontrado.")
 
             await pagina.wait_for_timeout(30000)
-
             await navegador.close()
 
             return
 
+        print("ALTCHA encontrado.")
 
-        print("ALTCHA visível:", await altcha.is_visible())
-
-
-        # ==========================================================
-        # 5. LOCALIZAR CHECKBOX INTERNO
-        # ==========================================================
-
-        print("\n===================================")
-        print("CHECKBOX ALTCHA")
-        print("===================================\n")
-
+        # 5. Localizar checkbox interno
         checkbox = altcha.locator("input[type='checkbox']")
 
-        print(
-            "Checkbox encontrado:",
-            await checkbox.count()
-        )
-
         if await checkbox.count() > 0:
-
             print(
-                "Checkbox visível:",
+                "Checkbox encontrado:",
                 await checkbox.is_visible()
             )
 
-            print(
-                "Checkbox marcado:",
-                await checkbox.is_checked()
-            )
+        # 6. Aguardar resolução manual do ALTCHA
+        print("\nResolva o ALTCHA manualmente no navegador.")
+        print("A automação ficará aguardando a validação.\n")
 
-
-        # ==========================================================
-        # 6. PAUSAR PARA RESOLVER ALTCHA MANUALMENTE
-        # ==========================================================
-
-        print("\n===================================")
-        print("AÇÃO MANUAL NECESSÁRIA")
-        print("===================================\n")
-
-        print("A janela do Chrome está aberta.")
-        print("Clique em:")
-        print()
-        print("    [ ] Eu não sou um robô")
-        print()
-        print("Resolva o ALTCHA manualmente.")
-        print("O programa ficará aguardando a validação.\n")
-
-
-        # ==========================================================
-        # 7. AGUARDAR ALTCHA SER VALIDADO
-        # ==========================================================
-
-        print("\n")
-        print("===================================")
-        print("MONITORANDO ALTCHA")
-        print("===================================\n")
-
+        # 7. Monitorar ALTCHA
         altcha_interno = altcha.locator(".altcha")
 
         for i in range(120):
-
             estado = await altcha_interno.get_attribute("data-state")
 
             checkbox = altcha.locator("input[type='checkbox']")
-
             checkbox_marcado = False
 
             if await checkbox.count() > 0:
@@ -199,472 +90,235 @@ async def main():
             )
 
             if estado == "verified":
-
-                print("\n===================================")
-                print("ALTCHA VALIDADO!")
-                print("===================================\n")
-
+                print("\nALTCHA VALIDADO!\n")
                 break
 
             await pagina.wait_for_timeout(1000)
 
         else:
-
-            print("\n===================================")
-            print("ALTCHA NÃO FOI DETECTADO COMO VALIDADO")
-            print("===================================\n")
-
+            print("\nALTCHA não foi validado.")
             print("Estado final:", estado)
             print("Checkbox marcado:", checkbox_marcado)
 
             await pagina.wait_for_timeout(10000)
-
             await navegador.close()
 
             return
 
-
-        # ==========================================================
-        # 8. CLICAR EM "CONSULTAR" E DIAGNOSTICAR O RESULTADO
-        # ==========================================================
-
-        print("\n===================================")
-        print("CLICANDO EM 'CONSULTAR'")
-        print("===================================\n")
-
+        # 8. Clicar em "Consultar"
         botao_consultar = pagina.locator("#Corpo_btnConsulta")
 
         if await botao_consultar.count() == 0:
-
-            print("ERRO: Botão 'Consultar' não encontrado.")
+            print("ERRO: botão 'Consultar' não encontrado.")
 
             await pagina.wait_for_timeout(10000)
-
             await navegador.close()
 
             return
 
         await botao_consultar.click()
 
-        print("Clique em 'Consultar' executado.")
+        print("Consulta executada.")
 
         await pagina.wait_for_load_state("networkidle")
-
         await pagina.wait_for_timeout(2000)
 
-        print("\n===================================")
-        print("DIAGNÓSTICO PÓS-CONSULTA")
-        print("===================================\n")
-
-        print("URL atual:", pagina.url)
-        print("Título da página:", await pagina.title())
+        # 9. Diagnóstico do resultado
+        print("\nResultado da consulta:")
+        print("URL:", pagina.url)
+        print("Título:", await pagina.title())
 
         caminho_screenshot = "resultado_consulta.png"
 
-        await pagina.screenshot(path=caminho_screenshot, full_page=True)
-
-        print("Screenshot salvo em:", caminho_screenshot)
+        await pagina.screenshot(
+            path=caminho_screenshot,
+            full_page=True
+        )
 
         caminho_html = "resultado_consulta.html"
-
         conteudo_html = await pagina.content()
 
         with open(caminho_html, "w", encoding="utf-8") as arquivo:
             arquivo.write(conteudo_html)
 
-        print("HTML salvo em:", caminho_html)
-
         texto_pagina = await pagina.inner_text("body")
 
-        termos_interessantes = ["apto", "não apto", "inapto", "APTO", "INAPTO"]
-
-        print("\nOcorrências de termos de interesse no texto da página:")
+        termos_interessantes = [
+            "apto",
+            "não apto",
+            "inapto"
+        ]
 
         for termo in termos_interessantes:
             if termo.lower() in texto_pagina.lower():
-                print(f" - Encontrado: '{termo}'")
+                print(f"Encontrado: '{termo}'")
 
-        botao_imprimir = pagina.get_by_text("Imprimir", exact=False)
+        # 10. Investigar "Avaliar Serviço"
+        texto_avaliar = pagina.get_by_text(
+            "AVALIAR SERVIÇO",
+            exact=False
+        )
 
-        quantidade_imprimir = await botao_imprimir.count()
-
-        print("\nOcorrências de elementos com texto 'Imprimir':", quantidade_imprimir)
-
-        for i in range(quantidade_imprimir):
-
-            elemento = botao_imprimir.nth(i)
-
-            try:
-
-                tag = await elemento.evaluate("el => el.tagName")
-                visivel = await elemento.is_visible()
-
-                print(f" - Elemento {i + 1}: tag={tag}, visível={visivel}")
-
-            except Exception as erro:
-
-                print(f" - Elemento {i + 1}: erro ao inspecionar ({erro})")
-
-        print("\n===================================")
-        print("DIAGNÓSTICO CONCLUÍDO")
-        print("===================================\n")
-
-
-        # ==========================================================
-        # 8.1 INVESTIGAR PAINEL "AVALIAR SERVIÇO" (SEM CLICAR)
-        # ==========================================================
-
-        print("\n===================================")
-        print("INVESTIGANDO PAINEL 'AVALIAR SERVIÇO'")
-        print("===================================\n")
-
-        texto_avaliar = pagina.get_by_text("AVALIAR SERVIÇO", exact=False)
-
-        quantidade_avaliar = await texto_avaliar.count()
-
-        print("Ocorrências do texto 'AVALIAR SERVIÇO':", quantidade_avaliar)
-
-        if quantidade_avaliar > 0:
-
+        if await texto_avaliar.count() > 0:
             elemento_titulo = texto_avaliar.first
-
-            visivel_titulo = await elemento_titulo.is_visible()
-
-            print("Visível:", visivel_titulo)
-
-            # Sobe alguns níveis na árvore DOM para capturar o painel inteiro,
-            # incluindo o "quadrado" no canto (provável botão de fechar).
 
             painel_html = await elemento_titulo.evaluate(
                 """
                 el => {
                     let atual = el;
+
                     for (let nivel = 0; nivel < 4; nivel++) {
                         if (atual.parentElement) {
                             atual = atual.parentElement;
                         }
                     }
+
                     return atual.outerHTML;
                 }
                 """
             )
 
-            print("\nHTML do painel (subindo 4 níveis a partir do título):")
-            print(painel_html)
+        # 11. Investigar "Imprimir Protocolo"
+        botao_protocolo = pagina.locator("#Corpo_btnProtocolo")
 
-        else:
+        if await botao_protocolo.count() > 0:
+            elemento_protocolo = botao_protocolo.first
 
-            print("Painel 'AVALIAR SERVIÇO' não apareceu desta vez (ok, pode ser esperado).")
+            outer_html = await elemento_protocolo.evaluate(
+                "el => el.outerHTML"
+            )
 
+            print("\nHTML do botão:")
+            print(outer_html)
 
-        # ==========================================================
-        # 8.2 INVESTIGAR BOTÃO "IMPRIMIR PROTOCOLO" (SEM CLICAR)
-        # ==========================================================
-
-        print("\n===================================")
-        print("INVESTIGANDO BOTÃO 'IMPRIMIR PROTOCOLO'")
-        print("===================================\n")
-
-        botao_imprimir_protocolo = pagina.get_by_text("Imprimir Protocolo", exact=False)
-
-        quantidade_imprimir_protocolo = await botao_imprimir_protocolo.count()
-
-        print("Ocorrências de 'Imprimir Protocolo':", quantidade_imprimir_protocolo)
-
-        if quantidade_imprimir_protocolo > 0:
-
-            elemento_imprimir = botao_imprimir_protocolo.first
-
-            print("Visível:", await elemento_imprimir.is_visible())
-            print("Tag:", await elemento_imprimir.evaluate("el => el.tagName"))
-            print("ID:", await elemento_imprimir.get_attribute("id"))
-            print("Name:", await elemento_imprimir.get_attribute("name"))
-            print("Onclick:", await elemento_imprimir.get_attribute("onclick"))
-            print("Target:", await elemento_imprimir.get_attribute("target"))
-            print("Href:", await elemento_imprimir.get_attribute("href"))
-
-            outer_html_imprimir = await elemento_imprimir.evaluate("el => el.outerHTML")
-
-            print("\nOuterHTML do botão 'Imprimir Protocolo':")
-            print(outer_html_imprimir)
-
-        else:
-
-            print("Botão 'Imprimir Protocolo' não encontrado desta vez.")
-
-        print("\n===================================")
-        print("INVESTIGAÇÃO CONCLUÍDA (NENHUM CLIQUE NOS DOIS ELEMENTOS)")
-        print("===================================\n")
-
-
-                # ==========================================================
-        # 9. FECHAR PAINEL "AVALIAR SERVIÇO"
-        # ==========================================================
-        print("\n===================================")
-        print("FECHANDO PAINEL 'AVALIAR SERVIÇO'")
-        print("===================================\n")
-
-        botao_fechar_avaliacao = pagina.locator(
+        # 12. Fechar painel "Avaliar Serviço"
+        botao_fechar = pagina.locator(
             ".ui-dialog-titlebar-close"
         )
 
-        quantidade_fechar = await botao_fechar_avaliacao.count()
+        if await botao_fechar.count() > 0:
+            await botao_fechar.first.click()
 
-        print(
-            "Botões de fechar encontrados:",
-            quantidade_fechar
-        )
-
-        if quantidade_fechar > 0:
-
-            print(
-                "Botão de fechar visível:",
-                await botao_fechar_avaliacao.first.is_visible()
-            )
-
-            await botao_fechar_avaliacao.first.click()
-
-            print("Clique no botão de fechar executado.")
+            print("\nPainel 'Avaliar Serviço' fechado.")
 
             await pagina.wait_for_timeout(1000)
 
-            modal_restante = pagina.locator(
-                "#divAvaliacao"
-            )
-
-            if await modal_restante.count() > 0:
-                print(
-                    "Modal ainda existe no DOM."
-                )
-
-                try:
-                    print(
-                        "Modal visível:",
-                        await modal_restante.is_visible()
-                    )
-                except Exception as erro:
-                    print(
-                        "Não foi possível verificar visibilidade:",
-                        erro
-                    )
-            else:
-                print(
-                    "Modal não encontrado no DOM."
-                )
+        # 13. Testar "Imprimir Protocolo"
+        if await botao_protocolo.count() == 0:
+            print("Botão 'Imprimir Protocolo' não encontrado.")
 
         else:
-            print(
-                "Botão de fechar não encontrado."
-            )
-
-
-        # ==========================================================
-        # 10. INVESTIGAR CLIQUE EM "IMPRIMIR PROTOCOLO"
-        # ==========================================================
-        print("\n===================================")
-        print("TESTANDO 'IMPRIMIR PROTOCOLO'")
-        print("===================================\n")
-
-        botao_protocolo = pagina.locator(
-            "#Corpo_btnProtocolo"
-        )
-
-        quantidade_protocolo = await botao_protocolo.count()
-
-        print(
-            "Botões 'Imprimir Protocolo' encontrados:",
-            quantidade_protocolo
-        )
-
-        if quantidade_protocolo == 0:
-
-            print(
-                "ERRO: botão 'Imprimir Protocolo' não encontrado."
-            )
-
-        else:
-
-            print(
-                "Visível:",
-                await botao_protocolo.is_visible()
-            )
-
-            print(
-                "Habilitado:",
-                await botao_protocolo.is_enabled()
-            )
-
-            print(
-                "URL antes do clique:",
-                pagina.url
-            )
-
-            quantidade_paginas_antes = len(
-                pagina.context.pages
-            )
-
-            print(
-                "Quantidade de páginas antes:",
-                quantidade_paginas_antes
-            )
-
-            # ------------------------------------------------------
-            # O objetivo desta etapa é APENAS descobrir o
-            # comportamento do botão.
-            # ------------------------------------------------------
+            paginas_antes = len(pagina.context.pages)
 
             print("\nClicando em 'Imprimir Protocolo'...")
 
             try:
-
                 await botao_protocolo.click()
-
-                print(
-                    "Clique executado."
-                )
+                print("Clique executado.")
 
             except Exception as erro:
-
-                print(
-                    "ERRO durante o clique:",
-                    erro
-                )
-
-            # ------------------------------------------------------
-            # Dar tempo para o comportamento do postback acontecer.
-            # ------------------------------------------------------
+                print("ERRO durante o clique:", erro)
 
             await pagina.wait_for_timeout(3000)
 
-            quantidade_paginas_depois = len(
-                pagina.context.pages
-            )
+            paginas_depois = len(pagina.context.pages)
 
-            print("\n-----------------------------------")
-            print("DIAGNÓSTICO APÓS O CLIQUE")
-            print("-----------------------------------\n")
+            print("\nResultado após o clique:")
+            print("Quantidade de páginas antes:", paginas_antes)
+            print("Quantidade de páginas depois:", paginas_depois)
+            print("URL:", pagina.url)
+            print("Título:", await pagina.title())
 
-            print(
-                "Quantidade de páginas depois:",
-                quantidade_paginas_depois
-            )
+            # Verificar nova aba/janela
+            if paginas_depois > paginas_antes:
+                print("\nNova página/aba detectada!")
 
-            print(
-                "URL da página original:",
-                pagina.url
-            )
-
-            print(
-                "Título da página original:",
-                await pagina.title()
-            )
-
-            # ------------------------------------------------------
-            # Verificar se apareceu uma nova aba/janela
-            # ------------------------------------------------------
-
-            if quantidade_paginas_depois > quantidade_paginas_antes:
-
-                print(
-                    "\nNOVA PÁGINA/ABA DETECTADA!"
-                )
+                nova_pagina = pagina.context.pages[-1]
 
                 for indice, pagina_aberta in enumerate(
                     pagina.context.pages,
                     start=1
                 ):
+                    print(f"\nPágina {indice}:")
+                    print("URL:", pagina_aberta.url)
+                    print("Título:", await pagina_aberta.title())
 
-                    print(
-                        f"\nPágina {indice}:"
+                try:
+                    await nova_pagina.wait_for_load_state(
+                        "load",
+                        timeout=15000
                     )
+                except Exception as erro:
+                    print("Aviso ao aguardar load:", erro)
 
-                    try:
-                        print(
-                            "URL:",
-                            pagina_aberta.url
-                        )
+                await nova_pagina.wait_for_timeout(1000)
 
-                        print(
-                            "Título:",
-                            await pagina_aberta.title()
-                        )
+                print("\nURL final da nova página:", nova_pagina.url)
 
-                    except Exception as erro:
+                print("\n===================================")
+                print("Capturando PDF...")
+                print("===================================")
 
-                        print(
-                            "Erro ao inspecionar página:",
-                            erro
-                        )
+                try:
+                    pasta_saida = "protocolos"
+                    os.makedirs(pasta_saida, exist_ok=True)
+
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    nome_arquivo = f"protocolo_055614433_MBZ1I49_{timestamp}.pdf"
+                    caminho_pdf = os.path.join(pasta_saida, nome_arquivo)
+
+                    print(f"Tentando requisitar: {nova_pagina.url}")
+
+                    resposta = await pagina.context.request.get(nova_pagina.url)
+                    print(f"Status da resposta: {resposta.status}")
+
+                    pdf_bytes = await resposta.body()
+                    print(f"Bytes recebidos: {len(pdf_bytes)}")
+                    print(f"Primeiros 20 bytes: {pdf_bytes[:20]}")
+
+                    if pdf_bytes[:4] != b"%PDF":
+                        print("Primeira tentativa retornou HTML. Aguardando 2s e tentando novamente...")
+                        await pagina.wait_for_timeout(2000)
+                        resposta = await pagina.context.request.get(nova_pagina.url)
+                        pdf_bytes = await resposta.body()
+                        print(f"Bytes na segunda tentativa: {len(pdf_bytes)}")
+
+                    with open(caminho_pdf, "wb") as arquivo_pdf:
+                        arquivo_pdf.write(pdf_bytes)
+
+                    print("PDF CAPTURADO")
+                    print("===================================")
+                    print("Caminho:", caminho_pdf)
+                    print("Tamanho:", len(pdf_bytes), "bytes")
+
+                    primeiros_bytes = pdf_bytes[:8]
+                    eh_pdf = pdf_bytes[:4] == b"%PDF"
+
+                    print("Primeiros bytes:", primeiros_bytes)
+                    print("É PDF:", eh_pdf)
+
+                except Exception as erro:
+                    print("FALHA NA CAPTURA DO PDF")
+                    print("===================================")
+                    print("Motivo:", str(erro))
+                    import traceback
+                    traceback.print_exc()
 
             else:
+                print("\nNenhuma nova página/aba detectada.")
 
-                print(
-                    "\nNenhuma nova página/aba foi detectada."
-                )
-
-                print(
-                    "O botão provavelmente processou o postback "
-                    "na própria página ou iniciou outro comportamento."
-                )
-
-            # ------------------------------------------------------
-            # Verificar se a resposta atual parece ser PDF
-            # ------------------------------------------------------
-
-            print("\n-----------------------------------")
-            print("VERIFICANDO RESULTADO")
-            print("-----------------------------------\n")
+            # Salvar HTML após o clique
+            caminho_html_protocolo = "resultado_pos_imprimir.html"
 
             try:
-
-                conteudo_atual = await pagina.content()
-
-                print(
-                    "HTML atual obtido com sucesso."
-                )
-
-                if "%PDF" in conteudo_atual:
-
-                    print(
-                        "ATENÇÃO: encontrado marcador de PDF no conteúdo."
-                    )
-
-                else:
-
-                    print(
-                        "Nenhum marcador '%PDF' encontrado no HTML."
-                    )
-
-            except Exception as erro:
-
-                print(
-                    "Erro ao obter conteúdo atual:",
-                    erro
-                )
-
-            # ------------------------------------------------------
-            # Salvar estado após o clique
-            # ------------------------------------------------------
-
-            caminho_html_protocolo = (
-                "resultado_pos_imprimir.html"
-            )
-
-            try:
-
-                conteudo_html_protocolo = (
-                    await pagina.content()
-                )
+                conteudo_html = await pagina.content()
 
                 with open(
                     caminho_html_protocolo,
                     "w",
                     encoding="utf-8"
                 ) as arquivo:
-
-                    arquivo.write(
-                        conteudo_html_protocolo
-                    )
+                    arquivo.write(conteudo_html)
 
                 print(
                     "HTML pós-clique salvo em:",
@@ -672,31 +326,16 @@ async def main():
                 )
 
             except Exception as erro:
-
                 print(
                     "Erro ao salvar HTML pós-clique:",
                     erro
                 )
 
-
-        # ==========================================================
-        # 11. DEIXAR A AUTOMAÇÃO ABERTA PARA INSPEÇÃO
-        # ==========================================================
-        print("\n===================================")
-        print("AUTOMAÇÃO PAUSADA")
-        print("===================================\n")
-
-        print(
-            "A consulta foi realizada e o teste do "
-            "'Imprimir Protocolo' foi executado."
-        )
-
-        print(
-            "A página permanecerá aberta por 60 segundos."
-        )
+        # 14. Manter navegador aberto para inspeção
+        print("\nAutomação concluída.")
+        print("O navegador permanecerá aberto por 60 segundos.")
 
         await pagina.wait_for_timeout(60000)
-
         await navegador.close()
 
 
