@@ -4,3 +4,11 @@ __pycache__/
 .env
 .vscode/
 .protocolos
+
+protocolos/
+resultado_consulta.html
+resultado_consulta.png
+resultado_pos_imprimir.html
+
+__pycache__/
+*.pyc
