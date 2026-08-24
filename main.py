@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from playwright.async_api import async_playwright
 
@@ -7,6 +8,15 @@ URL = "https://consultapublica.antt.gov.br/Site/ConsultaRNTRC.aspx"
 
 import os
 from datetime import datetime
+
+
+def normalizar_placa(placa: str) -> str:
+    placa_limpa = re.sub(r"[^a-zA-Z0-9]", "", placa)
+    return placa_limpa.upper()
+
+
+def normalizar_documento(numero: str) -> str:
+    return re.sub(r"\D", "", numero or "")
 
 
 async def main():
@@ -40,13 +50,35 @@ async def main():
         cpf_cnpj = pagina.locator("#Corpo_txtCpfCnpj")
 
         # 3. Preencher campos
-        placa_input = "QIO5C12"
-        rntrc_input = "050069322"
+        placa_input = "Kex3G22 "
+        rntrc_input = ""
+        cpf_cnpj_input = "738.848.202-49"
 
-        await placa.fill(placa_input)
-        await rntrc.fill(rntrc_input)
+        placa_input_normalizado = normalizar_placa(placa_input)
 
-        print("Campos preenchidos.")
+        rntrc_normalizado = normalizar_documento(rntrc_input)
+        cpf_cnpj_normalizado = normalizar_documento(cpf_cnpj_input)
+
+        if rntrc_normalizado:
+            tipo_documento = "RNTRC"
+            valor_documento = rntrc_normalizado
+        elif cpf_cnpj_normalizado:
+            tipo_documento = "CNPJ" if len(cpf_cnpj_normalizado) > 11 else "CPF"
+            valor_documento = cpf_cnpj_normalizado
+        else:
+            tipo_documento = None
+            valor_documento = None
+
+        await placa.fill(placa_input_normalizado)
+
+        if tipo_documento == "RNTRC":
+            await rntrc.fill(valor_documento)
+        elif tipo_documento in ("CPF", "CNPJ"):
+            await cpf_cnpj.fill(valor_documento)
+        else:
+            print("ERRO: nenhum RNTRC ou CPF/CNPJ informado.")
+
+        print(f"Campos preenchidos. Documento utilizado: {tipo_documento or 'nenhum'}")
 
         # 4. Localizar ALTCHA
         altcha = pagina.locator("altcha-widget#altcha")
@@ -277,7 +309,7 @@ async def main():
                     exist_ok=True
                 )
 
-                nome_arquivo = f"protocolo_{placa_input}_{rntrc_input}.pdf"
+                nome_arquivo = f"{placa_input_normalizado} ANTT.pdf"
 
                 caminho_pdf = os.path.join(
                     pasta_protocolos,
