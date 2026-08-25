@@ -2,6 +2,9 @@ import asyncio
 import re
 import os
 
+import tkinter as tk
+from tkinter import filedialog
+
 from playwright.async_api import async_playwright
 
 
@@ -15,6 +18,19 @@ def normalizar_placa(placa: str) -> str:
 
 def normalizar_documento(numero: str) -> str:
     return re.sub(r"\D", "", numero or "")
+
+
+def selecionar_pasta():
+    root = tk.Tk()
+    root.withdraw()
+
+    pasta = filedialog.askdirectory(
+        title="Selecione a pasta onde os PDFs serão salvos"
+    )
+
+    root.destroy()
+
+    return pasta
 
 
 def coletar_dados_das_placas():
@@ -66,7 +82,7 @@ def coletar_dados_das_placas():
     return consultas
 
 
-async def consultar_placa(pagina, dados_placa, pasta_protocolos):
+async def consultar_placa(pagina, dados_placa, pasta_destino):
     """
     Executa o fluxo completo de consulta para UMA placa, usando a mesma
     página (aba) do navegador. Preserva a lógica original de
@@ -295,7 +311,7 @@ async def consultar_placa(pagina, dados_placa, pasta_protocolos):
     # Salvar PDF capturado
     if pdf_bytes_capturado is not None:
         nome_arquivo = f"{placa_input_normalizado} ANTT.pdf"
-        caminho_pdf = os.path.join(pasta_protocolos, nome_arquivo)
+        caminho_pdf = os.path.join(pasta_destino, nome_arquivo)
 
         with open(caminho_pdf, "wb") as arquivo:
             arquivo.write(pdf_bytes_capturado)
@@ -316,10 +332,13 @@ async def consultar_placa(pagina, dados_placa, pasta_protocolos):
 
 
 async def main():
-    pasta_protocolos = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "protocolos"
-    )
-    os.makedirs(pasta_protocolos, exist_ok=True)
+    pasta_destino = selecionar_pasta()
+
+    if not pasta_destino:
+        print("Nenhuma pasta foi selecionada. Encerrando o programa.")
+        return
+
+    os.makedirs(pasta_destino, exist_ok=True)
 
     consultas = coletar_dados_das_placas()
 
@@ -336,7 +355,7 @@ async def main():
         pagina = await navegador.new_page()
 
         for dados_placa in consultas:
-            sucesso = await consultar_placa(pagina, dados_placa, pasta_protocolos)
+            sucesso = await consultar_placa(pagina, dados_placa, pasta_destino)
             resultados.append((dados_placa["placa"], sucesso))
 
         print("\nTodas as consultas foram processadas.")
