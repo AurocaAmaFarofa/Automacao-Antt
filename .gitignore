@@ -12,3 +12,6 @@ resultado_pos_imprimir.html
 
 __pycache__/
 *.pyc
+
+/dist
+/build

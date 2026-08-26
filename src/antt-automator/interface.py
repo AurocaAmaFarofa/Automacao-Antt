@@ -14,7 +14,7 @@ class InterfaceANTT:
         self.root = root
 
         self.root.title("Automação ANTT")
-        self.root.geometry("750x700")
+        self.root.geometry("750x800")
         self.root.resizable(False, False)
 
         self.pasta_destino = ""
