@@ -486,18 +486,19 @@ class InterfaceANTT:
             falhas = len(resultados) - sucessos
 
             self.root.after(
-                0,
-                lambda: self.finalizar_automacao(
-                    sucessos,
-                    falhas
-                )
+    0,
+            lambda: self.finalizar_automacao(
+                resultados,
+                sucessos,
+                falhas
             )
+)
 
         except Exception as erro:
 
             self.root.after(
                 0,
-                lambda: self.erro_automacao(
+                lambda erro=erro: self.erro_automacao(
                     erro
                 )
             )
@@ -508,6 +509,7 @@ class InterfaceANTT:
 
     def finalizar_automacao(
         self,
+        resultados,
         sucessos,
         falhas
     ):
@@ -517,11 +519,7 @@ class InterfaceANTT:
         )
 
         self.label_status.config(
-            text=(
-                f"Finalizado: "
-                f"{sucessos} PDF(s) salvo(s), "
-                f"{falhas} falha(s)."
-            )
+        text="Automação concluída."
         )
 
         messagebox.showinfo(
@@ -529,8 +527,26 @@ class InterfaceANTT:
             (
                 f"Consultas finalizadas!\n\n"
                 f"PDFs salvos: {sucessos}\n"
-                f"Falhas: {falhas}"
+                f"Erros: {falhas}"
             )
+        )
+
+        for placa, sucesso in resultados:
+            if sucesso:
+                for item in self.tabela.get_children():
+                    valores = self.tabela.item(item, "values")
+
+                    if valores[0] == placa:
+                        self.tabela.delete(item)
+                        break
+
+                for consulta in self.consultas[:]:
+                    if consulta["placa"] == placa:
+                        self.consultas.remove(consulta)
+                        break
+
+        self.label_status.config(
+        text="Aguardando novas consultas..."
         )
 
     # ================================================================

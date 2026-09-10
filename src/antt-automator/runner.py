@@ -41,12 +41,6 @@ async def executar_consultas(consultas, pasta_destino):
 
         print("\nTodas as consultas foram processadas.")
 
-        print(
-            "O navegador permanecerá aberto por 60 segundos."
-        )
-
-        await pagina.wait_for_timeout(60000)
-
         await navegador.close()
 
     return resultados
