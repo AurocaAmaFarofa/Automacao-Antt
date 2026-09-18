@@ -1,7 +1,7 @@
 import asyncio
 import threading
 import os
-
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
@@ -13,6 +13,23 @@ from config import salvar_configuracao, carregar_configuracao
 class InterfaceANTT:
 
     def __init__(self, root):
+        self.root = root
+
+        if getattr(sys, "frozen", False):
+            caminho_icone = os.path.join(sys._MEIPASS, "AnttFlow.ico")
+        else:
+            caminho_icone = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "AnttFlow.ico"
+                )
+            )
+
+        self.root.iconbitmap(caminho_icone)
+        self.root.title("FlowANTT — Automação ANTT")
+
         self.root = root
 
         self.root.title("Automação ANTT")
