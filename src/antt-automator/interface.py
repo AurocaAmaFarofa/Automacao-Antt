@@ -1,11 +1,13 @@
 import asyncio
 import threading
+import os
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 
-from runner import executar_consultas
+from runner import executar_consultas, encontrar_chrome
+from config import salvar_configuracao, carregar_configuracao
 
 
 class InterfaceANTT:
@@ -19,6 +21,9 @@ class InterfaceANTT:
 
         self.pasta_destino = ""
         self.consultas = []
+        self.caminho_chrome = ""
+
+        self.configuracao = carregar_configuracao()
 
         self.criar_interface()
 
@@ -30,7 +35,7 @@ class InterfaceANTT:
 
         titulo = tk.Label(
             self.root,
-            text="Automação ANTT",
+            text="AnttFlow",
             font=("Segoe UI", 22, "bold")
         )
 
@@ -80,8 +85,64 @@ class InterfaceANTT:
             command=self.selecionar_pasta,
             font=("Segoe UI", 10)
         )
-
         botao_pasta.pack(side="right")
+
+        pasta_salva = self.configuracao.get("pasta_destino", "")
+
+        if pasta_salva and os.path.isdir(pasta_salva):
+            self.pasta_destino = pasta_salva
+            self.entry_pasta.insert(0, pasta_salva)
+
+        # ============================================================
+        # CAMINHO DO CHROME
+        # ============================================================
+
+        frame_chrome = tk.LabelFrame(
+        self.root,
+        text=" Navegador Chrome ",
+        font=("Segoe UI", 10, "bold"),
+        padx=10,
+        pady=10
+        )
+        frame_chrome.pack(fill="x", padx=30, pady=10)
+
+        self.entry_chrome = tk.Entry(
+            frame_chrome,
+            font=("Segoe UI", 10)
+        )
+        self.entry_chrome.pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=(0, 10)
+        )
+
+        botao_chrome = tk.Button(
+            frame_chrome,
+            text="Selecionar",
+            command=self.selecionar_chrome,
+            font=("Segoe UI", 10)
+        )
+        botao_chrome.pack(side="right")
+
+        chrome_salvo = self.configuracao.get("chrome", "")
+
+        if chrome_salvo and os.path.isfile(chrome_salvo):
+            self.caminho_chrome = chrome_salvo
+            self.entry_chrome.insert(0, chrome_salvo)
+
+        else:
+            chrome_detectado = encontrar_chrome()
+            print("CHROME ENCONTRADO:", chrome_detectado)
+
+            if chrome_detectado:
+                self.caminho_chrome = chrome_detectado
+                self.entry_chrome.insert(0, chrome_detectado)
+
+                salvar_configuracao(
+                    chrome_detectado,
+                    self.pasta_destino
+                )
 
         # ============================================================
         # NOVA CONSULTA
@@ -302,7 +363,6 @@ class InterfaceANTT:
     # ================================================================
 
     def selecionar_pasta(self):
-
         pasta = filedialog.askdirectory(
             title="Selecione a pasta onde os PDFs serão salvos"
         )
@@ -310,15 +370,49 @@ class InterfaceANTT:
         if pasta:
             self.pasta_destino = pasta
 
-            self.entry_pasta.delete(
-                0,
-                tk.END
+            self.entry_pasta.delete(0, tk.END)
+            self.entry_pasta.insert(0, pasta)
+
+            salvar_configuracao(
+                self.caminho_chrome,
+                self.pasta_destino
             )
 
-            self.entry_pasta.insert(
-                0,
-                pasta
-            )
+    # ================================================================
+    # SELECIONAR CHROME
+    # ================================================================
+
+    def selecionar_chrome(self):
+        caminho = filedialog.askopenfilename(
+            title="Selecione o executável do Google Chrome",
+            filetypes=[
+                ("Executável do Chrome", "chrome.exe"),
+                ("Todos os arquivos", "*.*")
+            ]
+        )
+
+        if caminho:
+            if caminho.lower().endswith("chrome.exe") and os.path.isfile(caminho):
+
+                self.caminho_chrome = caminho
+
+                self.entry_chrome.delete(0, tk.END)
+                self.entry_chrome.insert(0, caminho)
+
+                salvar_configuracao(
+                    self.caminho_chrome,
+                    self.pasta_destino
+                )
+
+                self.label_status.config(
+                    text="Chrome selecionado com sucesso."
+                )
+
+            else:
+                messagebox.showwarning(
+                    "Chrome inválido",
+                    "Selecione o arquivo chrome.exe do Google Chrome."
+                )
 
     # ================================================================
     # ADICIONAR CONSULTA
@@ -432,11 +526,35 @@ class InterfaceANTT:
     # ================================================================
 
     def iniciar_consultas(self):
+        self.caminho_chrome = self.entry_chrome.get().strip()
+        self.pasta_destino = self.entry_pasta.get().strip()
+
+        if not self.caminho_chrome:
+            messagebox.showwarning(
+                "Chrome não encontrado",
+                "O Google Chrome não foi encontrado.\n\n"
+                "Clique em 'Selecionar' e escolha o arquivo chrome.exe."
+            )
+            return
+
+        if not os.path.isfile(self.caminho_chrome):
+            messagebox.showwarning(
+                "Chrome inválido",
+                "O caminho informado para o Chrome não existe."
+            )
+            return
 
         if not self.pasta_destino:
             messagebox.showwarning(
                 "Atenção",
                 "Selecione a pasta onde os PDFs serão salvos."
+            )
+            return
+
+        if not os.path.isdir(self.pasta_destino):
+            messagebox.showwarning(
+                "Pasta inválida",
+                "A pasta selecionada não existe."
             )
             return
 
@@ -446,6 +564,11 @@ class InterfaceANTT:
                 "Adicione pelo menos uma consulta."
             )
             return
+
+        salvar_configuracao(
+            self.caminho_chrome,
+            self.pasta_destino
+        )
 
         self.botao_iniciar.config(
             state="disabled"
@@ -473,7 +596,8 @@ class InterfaceANTT:
             resultados = asyncio.run(
                 executar_consultas(
                     self.consultas,
-                    self.pasta_destino
+                    self.pasta_destino,
+                    self.caminho_chrome
                 )
             )
 
@@ -486,13 +610,13 @@ class InterfaceANTT:
             falhas = len(resultados) - sucessos
 
             self.root.after(
-    0,
-            lambda: self.finalizar_automacao(
-                resultados,
-                sucessos,
-                falhas
+                0,
+                lambda: self.finalizar_automacao(
+                    resultados,
+                    sucessos,
+                    falhas
+                )
             )
-)
 
         except Exception as erro:
 
