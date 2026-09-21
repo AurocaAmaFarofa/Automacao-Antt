@@ -39,6 +39,7 @@ class InterfaceANTT:
         self.pasta_destino = ""
         self.consultas = []
         self.caminho_chrome = ""
+        self.manter_proprietario = tk.BooleanVar(value=False)
 
         self.configuracao = carregar_configuracao()
 
@@ -242,6 +243,20 @@ class InterfaceANTT:
             row=0,
             column=4,
             pady=5
+        )
+
+        self.checkbox_manter_documento = tk.Checkbutton(
+            frame_nova,
+            text="Manter RNTRC / CPF / CNPJ",
+            variable=self.manter_proprietario,
+            font=("Segoe UI", 9)
+        )
+
+        self.checkbox_manter_documento.grid(
+            row=1,
+            column=0,
+            columnspan=5,
+            pady=(5, 0)
         )
 
         # ============================================================
@@ -502,10 +517,11 @@ class InterfaceANTT:
             tk.END
         )
 
-        self.entry_documento.delete(
-            0,
-            tk.END
-        )
+        if not self.manter_documento.get():
+            self.entry_proprietario.delete(
+                0,
+                tk.END
+            )
 
         self.label_status.config(
             text=f"{len(self.consultas)} consulta(s) adicionada(s)."
